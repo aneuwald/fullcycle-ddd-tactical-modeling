@@ -31,6 +31,15 @@ export default class Order {
 		return this._items.reduce((total, item) => total + item.orderItemTotalPrice(), 0);
 	}
 
+	public changeCustomer(customerId: string) {
+		this._customerId = customerId;
+	}
+
+	public addItem(item: OrderItem) {
+		this._items.push(item);
+		this._total = this.calculateTotal();
+	}
+
 	get id() {
 		return this._id;
 	}

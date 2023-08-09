@@ -54,8 +54,40 @@ export default class OrderRepository implements OrderRepositoryInterface {
 
 	}
 
-	update(entity?: Order): Promise<void> {
-		throw new Error("Order can't be updated, only created or deleted");
+	async update(entity: Order): Promise<void> {
+
+		const sequelize = OrderModel.sequelize!;
+
+		// Atomic transaction, it means that if any of the operations fail, the whole transaction is rolled back
+		await sequelize.transaction(async (t) => {
+
+			// First update the orders table
+			await OrderModel.update({
+				customer_id: entity.customerId,
+				total: entity.total
+			}, {
+				where: { id: entity.id },
+				transaction: t
+			})
+
+			// Than remove all items, to ensure there are no orphan OrderItems
+			await OrderItemModel.destroy({ where: { order_id: entity.id }, transaction: t })
+
+			// Than add all together again
+			// The fact it has the order_id is enough to sequelize to understand they are related
+			const itemsToAdd = entity.items.map((item) => ({
+				id: item.id,
+				name: item.name,
+				order_id: entity.id,
+				product_id: item.productId,
+				quantity: item.quantity,
+				price: item.price
+			}))
+
+			await OrderItemModel.bulkCreate(itemsToAdd, { transaction: t })
+
+		})
+
 	}
 
 	async deleteById(id: string): Promise<void> {

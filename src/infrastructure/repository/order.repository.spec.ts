@@ -128,7 +128,7 @@ describe('Order repository unit tests', () => {
 
 	})
 
-	it('should throw an error when try to update an order', async () => {
+	it('should update an order', async () => {
 
 		const customerRepository = new CustomerRepository()
 		const customer = new Customer('customer1', "Customer 1")
@@ -144,15 +144,26 @@ describe('Order repository unit tests', () => {
 
 		const orderRepository = new OrderRepository();
 		const order = new Order("order1", customer.id, [orderItem]);
+
 		await orderRepository.create(order);
 
-		const orderItemUpdated = new OrderItem("orderItem1", product.name, product.price, 3, product.id);
-		const orderUpdated = new Order("order1", customer.id, [orderItemUpdated]);
+		const orderItem2 = new OrderItem("orderItem2", product.name, product.price, 3, product.id);
+		order.addItem(orderItem2)
+		const customer2 = new Customer('customer2', "Customer 2")
+		const address2 = new Address("Street 2", 20, "City 2", "87654321")
+		customer2.setAddress(address2)
+		await customerRepository.create(customer2)
 
-		expect(() => {
-			orderRepository.update(orderUpdated)
-		}).toThrowError("Order can't be updated, only created or deleted")
+		order.changeCustomer(customer2.id)
 
+		await orderRepository.update(order)
+
+		const orderModel = await orderRepository.findById(order.id)
+
+		expect(orderModel?.customerId).toStrictEqual(customer2.id)
+		expect(orderModel?.total).toStrictEqual(order.total)
+		expect(orderModel?.items).toHaveLength(2)
+		expect(orderModel?.items).toStrictEqual([orderItem, orderItem2])
 	})
 
 	it('should delete an order', async () => {
@@ -187,7 +198,7 @@ describe('Order repository unit tests', () => {
 
 	})
 
-	it('should return correct customer on order', async () => {
+	it('should return correct customerId on order', async () => {
 
 		const customerRepository = new CustomerRepository()
 		const customer = new Customer('customer1', "Customer 1")
@@ -205,21 +216,9 @@ describe('Order repository unit tests', () => {
 		const order = new Order("order1", customer.id, [orderItem]);
 		await orderRepository.create(order);
 
-		const orderModel = await OrderModel.findOne({
-			where: { id: order.id },
-			include: ["items", "customer"]
-		})
+		const orderModel = await orderRepository.findById(order.id);
 
-		expect(orderModel?.customer.toJSON()).toStrictEqual({
-			active: false,
-			city: "12345678",
-			id: "customer1",
-			name: "Customer 1",
-			number: 10,
-			postalCode: "City 1",
-			rewardPoints: 0,
-			street: "Street 1",
-		})
+		expect(orderModel?.customerId).toBe(customer.id)
 
 	})
 
